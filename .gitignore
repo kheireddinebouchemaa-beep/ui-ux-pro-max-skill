@@ -51,6 +51,3 @@ out/
 .claude/settings.local.json
 .claude/session-state/
 ui-ux-pro-max-website/*
-
-# ECOTRACK tool — contains API key placeholder, keep local
-preview/ecotrack-tool/
