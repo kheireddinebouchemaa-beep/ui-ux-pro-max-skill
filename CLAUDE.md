@@ -96,3 +96,46 @@ Never push directly to `main`. Always:
 2. Commit changes
 3. Push branch: `git push -u origin <branch>`
 4. Create PR: `gh pr create`
+
+## Contexte utilisateur — Khero
+
+### Identité professionnelle
+- **Nom** : Khero
+- **Postes** : Directeur des Méthodes et Procédures + Directeur des Opérations + Associé chez **IMIR Logistics**
+- **Autre activité** : Fondateur de **Gold Delivery** (agrégateur logistique B2B, Algérie)
+- **Localisation** : Bab Ezzouar, Alger, Algérie
+- **Langue de travail** : Français principalement, arabe occasionnellement
+
+### IMIR Logistics
+- Réseau national algérien de livraison de colis
+- **76 stations** couvrant **55 wilayas**
+- Plateforme : **ECOTRACK v3.11** (imir.ecotrack.dz)
+- Missions : optimisation des processus, audit opérationnel, rédaction de procédures, administration système, développement stratégique
+- Design IMIR (thème sombre) : IBM Plex Mono / IBM Plex Sans Arabic — Primary Red #C0392B / Dark #1A1D27 / Gold #F0C040
+- Numérotation documents : IMIR-[CAT]-[TYPE]-[NNN]
+
+### Gold Delivery
+- Agrégateur logistique : intermédiaire entre e-commerçants algériens et transporteurs
+- Landing page : marvelous-chimera-179c56.netlify.app
+- Palette : Absolute Black #0A0A0A / Signature Gold #D4AF37
+- Activités : TikTok, carrousels, scripts DM B2B, prospection e-commerce
+
+### Stack technique habituel
+- **HTML standalone** : dashboards, rapports COD, outils financiers, apps d'audit
+- **Excel / XLSX** : tableaux croisés dynamiques, exports ECOTRACK
+- **Word / DOCX** : procédures, contrats, cahiers des charges
+- **PDF** : via WeasyPrint (HTML → PDF)
+- **Node.js** : docx, PptxGenJS
+- **Python** : scripts OOP (pitrack_poo.py)
+- **React/TypeScript** : dashboards (LogiTrack Pro)
+- **Three.js** : animations particules (landing Gold Delivery)
+- **n8n Cloud** : automatisation opérationnelle
+- **Google AI Studio** : développement itératif d'apps
+
+### Projets en cours
+- Outils suivi COD : rapports HTML financiers, dashboards, montants dizaines de millions DA
+- Dashboard KPI livreurs (export ECOTRACK avril 2026, 94 342 colis)
+- Documentation ECOTRACK v3.11 (17+ modules)
+- Système franchise IMIR : CdC, procédures, contrat (1 000 000 DZD caution), formulaire inspection
+- Prospection Gold Delivery : TikTok, carrousels, DM B2B
+- Exploration n8n pour automatisation réseau IMIR

@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECOTRACK — IMIR Logistics Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0E1018;--sidebar:#1A1D27;--card:#1A1D27;--card-elevated:#1E2130;
+  --border:#252836;--red:#C0392B;--red-hover:#A93226;--gold:#F0C040;
+  --text:#E8EAF0;--text-muted:#7B8099;--text-dim:#4A5068;
+  --green:#27AE60;--blue:#2980B9;
+  --sidebar-w:220px;--sidebar-collapsed:64px;--header-h:60px;--tr:200ms ease;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans Arabic',sans-serif;font-size:14px;display:flex}
+
+/* SETUP OVERLAY */
+#setup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+#setup-overlay.hidden{display:none}
+.setup-box{background:var(--sidebar);border:1px solid var(--border);border-radius:16px;padding:40px;max-width:480px;width:90%;text-align:center}
+.setup-logo{width:56px;height:56px;background:var(--red);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.setup-logo svg{width:28px;height:28px;color:#fff}
+.setup-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.setup-sub{color:var(--text-muted);margin-bottom:28px;line-height:1.6;font-size:13px}
+.setup-input-wrap{position:relative;margin-bottom:12px}
+.setup-input{width:100%;background:var(--card-elevated);border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;outline:none;transition:border-color var(--tr)}
+.setup-input:focus{border-color:var(--red)}
+.setup-btn{width:100%;padding:13px;background:var(--red);color:#fff;border:none;border-radius:8px;font-family:'IBM Plex Sans Arabic',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background var(--tr);margin-top:4px}
+.setup-btn:hover{background:var(--red-hover)}
+.setup-hint{font-size:11px;color:var(--text-dim);margin-top:12px;line-height:1.5}
+.setup-err{color:#E74C3C;font-size:12px;margin-top:8px;display:none}
+
+/* LAYOUT */
+#sidebar{width:var(--sidebar-collapsed);min-width:var(--sidebar-collapsed);background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:width var(--tr);overflow:hidden;z-index:100;position:relative}
+#sidebar.expanded{width:var(--sidebar-w)}
+.sidebar-logo{height:var(--header-h);display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--border);gap:12px;min-width:var(--sidebar-w)}
+.logo-icon{width:32px;height:32px;min-width:32px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-text{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;white-space:nowrap;opacity:0;transition:opacity var(--tr)}
+.logo-sub{font-size:9px;color:var(--text-muted);display:block}
+#sidebar.expanded .logo-text{opacity:1}
+nav{flex:1;padding:8px 0}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;border-left:3px solid transparent;transition:all var(--tr);white-space:nowrap;min-width:var(--sidebar-w);color:var(--text-muted);user-select:none}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+.nav-item.active{border-left-color:var(--red);color:var(--red);background:rgba(192,57,43,0.08)}
+.nav-item svg{min-width:20px;width:20px;height:20px}
+.nav-label{font-size:13px;font-weight:500;opacity:0;transition:opacity var(--tr)}
+#sidebar.expanded .nav-label{opacity:1}
+.sidebar-bottom{padding:8px 0;border-top:1px solid var(--border)}
+.sidebar-toggle{position:absolute;top:50%;right:-12px;transform:translateY(-50%);width:24px;height:24px;background:var(--card-elevated);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:101}
+.sidebar-toggle svg{width:12px;height:12px;color:var(--text-muted);transition:transform var(--tr)}
+#sidebar.expanded .sidebar-toggle svg{transform:rotate(180deg)}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#header{height:var(--header-h);min-height:var(--header-h);background:var(--sidebar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px}
+.page-title{font-size:16px;font-weight:600;flex:1}
+.breadcrumb{font-size:12px;color:var(--text-muted)}
+.header-actions{display:flex;align-items:center;gap:12px}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim)}
+.conn-dot.connected{background:var(--green);box-shadow:0 0 6px var(--green)}
+.conn-dot.error{background:var(--red)}
+.sync-time{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted)}
+#content{flex:1;overflow-y:auto;padding:24px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-family:'IBM Plex Sans Arabic',sans-serif;font-size:13px;font-weight:500;transition:all var(--tr);white-space:nowrap}
+.btn-primary{background:var(--red);color:#fff}.btn-primary:hover{background:var(--red-hover)}
+.btn-secondary{background:var(--card-elevated);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--text-muted)}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border)}.btn-ghost:hover{color:var(--text);border-color:var(--text-muted)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-icon{padding:7px;border-radius:6px}
+.btn-danger{background:rgba(192,57,43,0.15);color:var(--red);border:1px solid rgba(192,57,43,0.3)}.btn-danger:hover{background:var(--red);color:#fff}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.card-elevated{background:var(--card-elevated);border:1px solid var(--border);border-radius:10px;padding:20px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.kpi-label{font-size:12px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.kpi-value{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600}
+.kpi-value.gold{color:var(--gold)}.kpi-value.red{color:var(--red)}.kpi-value.green{color:var(--green)}
+.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:6px}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--card-elevated)}
+th{padding:12px 14px;text-align:left;font-weight:600;color:var(--text-muted);font-size:12px;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:11px 14px;border-bottom:1px solid rgba(37,40,54,0.7);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.mono{font-family:'IBM Plex Mono',monospace}
+.gold{color:var(--gold)}.red{color:var(--red)}.green{color:var(--green)}.muted{color:var(--text-muted)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.pill-green{background:rgba(39,174,96,0.15);color:#2ECC71;border:1px solid rgba(39,174,96,0.3)}
+.pill-red{background:rgba(192,57,43,0.15);color:#E74C3C;border:1px solid rgba(192,57,43,0.3)}
+.pill-gold{background:rgba(240,192,64,0.15);color:var(--gold);border:1px solid rgba(240,192,64,0.3)}
+.pill-blue{background:rgba(41,128,185,0.15);color:#3498DB;border:1px solid rgba(41,128,185,0.3)}
+.pill-gray{background:rgba(123,128,153,0.15);color:var(--text-muted);border:1px solid rgba(123,128,153,0.2)}
+
+/* FORMS */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;font-weight:500}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--card-elevated);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-family:'IBM Plex Sans Arabic',sans-serif;font-size:13px;transition:border-color var(--tr);outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--red)}
+.form-select{cursor:pointer}.form-select option{background:var(--card-elevated)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-hint{font-size:11px;color:var(--text-dim);margin-top:4px}
+.checkbox-wrap{display:flex;align-items:center;gap:8px;cursor:pointer}
+.checkbox-wrap input[type=checkbox]{width:16px;height:16px;accent-color:var(--red)}
+
+/* SEARCH */
+.search-wrap{position:relative}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);width:16px;height:16px}
+.search-input{padding-left:36px!important}
+
+/* TOASTS */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 18px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:10px;min-width:280px;max-width:360px;animation:slideIn 0.2s ease;border:1px solid}
+.toast-success{background:rgba(39,174,96,0.15);border-color:rgba(39,174,96,0.4);color:#2ECC71}
+.toast-error{background:rgba(192,57,43,0.15);border-color:rgba(192,57,43,0.4);color:#E74C3C}
+.toast-info{background:rgba(240,192,64,0.12);border-color:rgba(240,192,64,0.3);color:var(--gold)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeOut{to{opacity:0;transform:translateX(20px)}}
+
+/* MODAL */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#modal-overlay.open{display:flex}
+.modal{background:var(--sidebar);border:1px solid var(--border);border-radius:12px;padding:28px;min-width:380px;max-width:520px;width:90%}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:8px}
+.modal-body{color:var(--text-muted);margin-bottom:24px;line-height:1.6}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* SPINNER */
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--text-muted);gap:12px}
+
+/* PAGES */
+.page{display:none;animation:pageIn var(--tr)}
+.page.active{display:block}
+@keyframes pageIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.section-title{font-size:15px;font-weight:600}
+.section-actions{display:flex;gap:8px;align-items:center}
+
+/* TIMELINE */
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--border)}
+.timeline-item{position:relative;margin-bottom:20px}
+.timeline-item::before{content:'';position:absolute;left:-20px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--bg)}
+.timeline-date{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:3px}
+.timeline-content{background:var(--card-elevated);border:1px solid var(--border);border-radius:8px;padding:12px}
+.timeline-station{font-size:12px;color:var(--text-muted);margin-top:4px}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab{padding:10px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-muted);border-bottom:2px solid transparent;transition:all var(--tr)}
+.tab:hover{color:var(--text)}.tab.active{color:var(--red);border-bottom-color:var(--red)}
+
+/* BARS */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar-label{font-size:12px;color:var(--text-muted);width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--gold));border-radius:3px;transition:width 0.6s ease}
+.bar-val{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);width:60px;text-align:right}
+
+/* MISC */
+.wilaya-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:12px}
+.wilaya-cell{aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;cursor:default;transition:transform var(--tr)}
+.wilaya-cell:hover{transform:scale(1.2);z-index:1}
+.tier-1{background:rgba(39,174,96,0.3);color:#2ECC71}
+.tier-2{background:rgba(240,192,64,0.25);color:var(--gold)}
+.tier-3{background:rgba(231,76,60,0.25);color:#E74C3C}
+.tier-0{background:var(--border);color:var(--text-dim)}
+.tracking-hero{text-align:center;padding:40px 20px 24px}
+.tracking-hero h2{font-size:22px;font-weight:600;margin-bottom:8px}
+.tracking-hero p{color:var(--text-muted);margin-bottom:24px}
+.tracking-search{display:flex;gap:0;max-width:500px;margin:0 auto}
+.tracking-search input{flex:1;background:var(--card-elevated);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;padding:12px 16px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:14px;outline:none}
+.tracking-search input:focus{border-color:var(--red)}
+.tracking-search button{border-radius:0 8px 8px 0}
+.calc-result{background:var(--card-elevated);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:16px}
+.empty-state{text-align:center;padding:48px 24px;color:var(--text-muted)}
+.empty-state h3{font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px}
+.empty-state p{font-size:13px}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px}
+.mb-16{margin-bottom:16px}
+.mt-8{margin-top:8px}
+.expand-content{padding:16px;display:flex;gap:16px;flex-wrap:wrap}
+.expand-label{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.expand-value{font-size:13px;color:var(--text)}
+.expand-field{min-width:140px}
+</style>
+</head>
+<body>
+
+<!-- SETUP OVERLAY -->
+<div id="setup-overlay">
+  <div class="setup-box">
+    <div class="setup-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="setup-title">ECOTRACK Dashboard</div>
+    <div class="setup-sub">Entrez votre clé API ECOTRACK pour accéder au dashboard en temps réel.<br>IMIR Logistics — 76 stations · 55 wilayas</div>
+    <div class="setup-input-wrap">
+      <input type="password" id="setup-token" class="setup-input" placeholder="Votre clé API ECOTRACK..." autocomplete="off">
+    </div>
+    <div id="setup-err" class="setup-err">Clé invalide ou erreur de connexion. Vérifiez et réessayez.</div>
+    <button class="setup-btn" onclick="setupConnect()" id="setup-btn">
+      <span id="setup-btn-text">Se connecter</span>
+    </button>
+    <div class="setup-hint">
+      La clé est stockée localement dans votre navigateur.<br>
+      Elle ne quitte jamais votre appareil sauf pour appeler l'API ECOTRACK.
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="logo-text">IMIR ECOTRACK<span class="logo-sub">v3.11</span></div>
+  </div>
+  <div class="sidebar-toggle" id="sidebarToggle">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+  <nav>
+    <div class="nav-item active" data-page="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Dashboard</span>
+    </div>
+    <div class="nav-item" data-page="commandes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H7A5 5 0 017 7h10a5 5 0 010 10h-1"/><circle cx="12" cy="17" r="3"/></svg>
+      <span class="nav-label">Commandes</span>
+    </div>
+    <div class="nav-item" data-page="nouvelle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span class="nav-label">Nouvelle Commande</span>
+    </div>
+    <div class="nav-item" data-page="suivi">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="nav-label">Suivi Colis</span>
+    </div>
+    <div class="nav-item" data-page="tarifs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <span class="nav-label">Tarifs</span>
+    </div>
+    <div class="nav-item" data-page="analytiques">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="nav-label">Analytiques</span>
+    </div>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="nav-item" data-page="parametres">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="nav-label">Paramètres</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="header">
+    <div>
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="breadcrumb" id="breadcrumb">IMIR Logistics / Dashboard</div>
+    </div>
+    <div class="header-actions">
+      <div class="conn-dot" id="connDot"></div>
+      <span class="sync-time" id="syncTime">—</span>
+      <button class="btn btn-secondary btn-sm" onclick="refreshAll()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Actualiser
+      </button>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="grid-4" style="margin-bottom:20px">
+        <div class="kpi-card">
+          <div class="kpi-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Wilayas couvertes</div>
+          <div class="kpi-value gold" id="kv-wilayas">—</div>
+          <div class="kpi-sub">Sur 58 wilayas nationales</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Tarif moyen livraison</div>
+          <div class="kpi-value" id="kv-avg">—</div>
+          <div class="kpi-sub">Moyenne toutes wilayas</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Statut API</div>
+          <div style="margin-top:8px"><span class="pill" id="dash-status" style="font-size:13px">Connexion...</span></div>
+          <div class="kpi-sub" id="dash-sync">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Réseau IMIR</div>
+          <div class="kpi-value green" style="font-size:18px">76 stations</div>
+          <div class="kpi-sub">55 wilayas · Réseau national</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">Tarifs par wilaya (Top 20)</div>
+            <span class="pill pill-gold" style="font-size:11px">Tarification active</span>
+          </div>
+          <div id="tarif-bars"><div class="loading-overlay"><div class="spinner"></div>Chargement...</div></div>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">Commandes récentes</div>
+            <button class="btn btn-ghost btn-sm" onclick="navigateTo('commandes')">Voir tout</button>
+          </div>
+          <div id="recent-orders-wrap"><div class="loading-overlay"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMMANDES -->
+    <div class="page" id="page-commandes">
+      <div class="section-header">
+        <div class="section-actions">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="form-input search-input" id="cmd-search" placeholder="Tracking, client, téléphone..." oninput="filterOrders()" style="width:240px">
+          </div>
+          <select class="form-select" id="cmd-status-filter" onchange="filterOrders()" style="width:160px">
+            <option value="">Tous statuts</option>
+            <option value="0">En attente</option>
+            <option value="1">Pris en charge</option>
+            <option value="2">En transit</option>
+            <option value="3">Livré</option>
+            <option value="4">Retour</option>
+            <option value="5">Retour validé</option>
+            <option value="6">Hors zone</option>
+            <option value="7">Tentative</option>
+          </select>
+          <select class="form-select" id="cmd-type-filter" onchange="filterOrders()" style="width:140px">
+            <option value="">Tous types</option>
+            <option value="1">Livraison</option>
+            <option value="2">Échange</option>
+            <option value="3">Pickup</option>
+            <option value="4">Recouvrement</option>
+          </select>
+        </div>
+        <div class="section-actions">
+          <span class="muted" id="orders-count" style="font-size:12px"></span>
+          <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="navigateTo('nouvelle')">+ Nouvelle</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="orders-table-wrap">
+        <div class="loading-overlay"><div class="spinner"></div>Chargement...</div>
+      </div>
+      <div id="orders-pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:13px"></div>
+    </div>
+
+    <!-- NOUVELLE COMMANDE -->
+    <div class="page" id="page-nouvelle">
+      <div class="grid-2">
+        <div class="card">
+          <div class="section-title mb-16">Informations client</div>
+          <div class="form-group"><label class="form-label">Nom complet *</label><input type="text" class="form-input" id="f-nom" placeholder="Ex: Ahmed Benali"></div>
+          <div class="form-group"><label class="form-label">Téléphone *</label><input type="tel" class="form-input" id="f-tel" placeholder="0555 XX XX XX"></div>
+          <div class="form-group"><label class="form-label">Téléphone 2</label><input type="tel" class="form-input" id="f-tel2" placeholder="Optionnel"></div>
+          <div class="form-group"><label class="form-label">Adresse *</label><input type="text" class="form-input" id="f-adresse" placeholder="Rue, quartier..."></div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Wilaya *</label>
+              <select class="form-select" id="f-wilaya" onchange="onWilayaChange()">
+                <option value="">Choisir wilaya</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Commune *</label>
+              <select class="form-select" id="f-commune">
+                <option value="">D'abord choisir wilaya</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Remarque</label><textarea class="form-textarea" id="f-remarque" placeholder="Instructions de livraison..."></textarea></div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="section-title mb-16">Informations colis</div>
+            <div class="form-group">
+              <label class="form-label">Type de service *</label>
+              <select class="form-select" id="f-type">
+                <option value="1">Livraison à domicile</option>
+                <option value="2">Échange</option>
+                <option value="3">Pickup</option>
+                <option value="4">Recouvrement</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Désignation *</label>
+              <select class="form-select" id="f-product">
+                <option value="">Choisir désignation</option>
+              </select>
+            </div>
+            <div class="grid-2">
+              <div class="form-group"><label class="form-label">Montant COD (DA) *</label><input type="number" class="form-input" id="f-montant" placeholder="0" min="0" oninput="updateTarifPreview()"></div>
+              <div class="form-group"><label class="form-label">Poids (kg)</label><input type="number" class="form-input" id="f-poids" placeholder="1" min="0.1" step="0.1"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Référence interne</label><input type="text" class="form-input" id="f-ref" placeholder="Ex: CMD-2024-001"></div>
+            <label class="checkbox-wrap" style="margin-bottom:16px"><input type="checkbox" id="f-fragile"><span style="font-size:13px">Colis fragile</span></label>
+            <label class="checkbox-wrap"><input type="checkbox" id="f-ouvrable"><span style="font-size:13px">Peut être ouvert à la livraison</span></label>
+          </div>
+          <div class="card" id="tarif-preview" style="display:none">
+            <div class="section-title mb-16">Aperçu tarification</div>
+            <div id="tarif-preview-content"></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:12px" onclick="submitOrder()" id="submit-order-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Créer la commande
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUIVI -->
+    <div class="page" id="page-suivi">
+      <div class="tracking-hero">
+        <h2>Suivi en temps réel</h2>
+        <p>Entrez un numéro de tracking pour suivre votre colis</p>
+        <div class="tracking-search">
+          <input type="text" id="track-input" placeholder="Ex: IMIR-2024-XXXX" onkeydown="if(event.key==='Enter')trackOrder()">
+          <button class="btn btn-primary" onclick="trackOrder()">Suivre</button>
+        </div>
+      </div>
+      <div id="track-result"></div>
+      <div style="margin-top:32px">
+        <div class="card">
+          <div class="section-title mb-16">Suivi multiple (batch)</div>
+          <div class="form-group">
+            <label class="form-label">Numéros de tracking (un par ligne)</label>
+            <textarea class="form-textarea" id="batch-input" placeholder="IMIR-2024-001&#10;IMIR-2024-002&#10;IMIR-2024-003" style="min-height:100px"></textarea>
+          </div>
+          <button class="btn btn-secondary" onclick="trackBatch()">Suivre tous</button>
+          <div id="batch-result" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TARIFS -->
+    <div class="page" id="page-tarifs">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTarifTab('livraison',this)">Livraison domicile</div>
+        <div class="tab" onclick="switchTarifTab('retour',this)">Retour</div>
+        <div class="tab" onclick="switchTarifTab('echange',this)">Échange</div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="table-wrap" id="tarif-table-wrap">
+            <div class="loading-overlay"><div class="spinner"></div>Chargement...</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title mb-16">Calculateur COD</div>
+          <div class="form-group">
+            <label class="form-label">Wilaya de destination</label>
+            <select class="form-select" id="calc-wilaya" onchange="calcTarif()">
+              <option value="">Choisir wilaya</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montant COD (DA)</label>
+            <input type="number" class="form-input" id="calc-montant" placeholder="0" oninput="calcTarif()">
+          </div>
+          <div id="calc-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTIQUES -->
+    <div class="page" id="page-analytiques">
+      <div class="grid-3" style="margin-bottom:20px">
+        <div class="card">
+          <div class="section-title mb-16">Distribution tarifs</div>
+          <div id="chart-distribution"></div>
+        </div>
+        <div class="card">
+          <div class="section-title mb-16">Couverture géographique</div>
+          <div id="chart-geo"></div>
+        </div>
+        <div class="card">
+          <div class="section-title mb-16">Statistiques réseau</div>
+          <div id="chart-stats"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title mb-16">Carte des wilayas — Couverture IMIR</div>
+        <div id="wilaya-map"></div>
+      </div>
+    </div>
+
+    <!-- PARAMÈTRES -->
+    <div class="page" id="page-parametres">
+      <div class="grid-2">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="section-title mb-16">Configuration API</div>
+            <div class="form-group"><label class="form-label">Base URL</label><input type="url" class="form-input mono" id="s-base" placeholder="https://imir.ecotrack.dz" oninput="saveSettings()"></div>
+            <div class="form-group">
+              <label class="form-label">API Token</label>
+              <div style="position:relative">
+                <input type="password" class="form-input mono" id="s-token" placeholder="Votre clé API" oninput="saveSettings()" style="padding-right:40px">
+                <button type="button" onclick="toggleTokenVisibility()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-wrap"><input type="checkbox" id="s-proxy" onchange="saveSettings();toast('Proxy CORS '+(this.checked?'activé':'désactivé'),'info')"><span>Activer proxy CORS</span></label>
+              <div class="form-hint">Pour accès depuis mobile ou fichier local (utilise corsproxy.io)</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+              <button class="btn btn-primary" style="flex:1" onclick="validateToken()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Valider connexion
+              </button>
+              <button class="btn btn-secondary" onclick="clearCache()">Vider cache</button>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="pill pill-gray" id="conn-status-pill">Non testé</span>
+              <span class="muted" id="conn-last-check" style="font-size:11px"></span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title mb-16">Déconnexion</div>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Effacer toutes les données locales et revenir à l'écran de connexion.</p>
+            <button class="btn btn-danger" onclick="logout()">Se déconnecter</button>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="section-title mb-16">À propos</div>
+            <div style="font-size:13px;color:var(--text-muted)">
+              <div class="setting-row"><span>Application</span><span class="mono" style="color:var(--text)">ECOTRACK Dashboard</span></div>
+              <div class="setting-row"><span>Version</span><span class="pill pill-gold mono" style="font-size:11px">v1.0.0</span></div>
+              <div class="setting-row"><span>API Version</span><span class="mono">v1</span></div>
+              <div class="setting-row"><span>Réseau</span><span>IMIR Logistics</span></div>
+              <div class="setting-row" style="border:none"><span>Couverture</span><span class="mono">76 stations · 55 wilayas</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title mb-16">Résolution CORS</div>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.7">Si le dashboard ne charge pas depuis un fichier local ou un mobile, activez le proxy CORS ci-contre, ou utilisez une des méthodes suivantes :</p>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px">
+              <div style="background:var(--card-elevated);border-radius:6px;padding:12px"><strong style="color:var(--text)">Extension Chrome/Firefox</strong><br><span style="color:var(--text-muted)">Installer "Allow CORS" ou "CORS Unblock"</span></div>
+              <div style="background:var(--card-elevated);border-radius:6px;padding:12px"><strong style="color:var(--text)">Serveur local</strong><br><code class="mono" style="font-size:11px;color:var(--gold)">python3 -m http.server 8080</code></div>
+              <div style="background:var(--card-elevated);border-radius:6px;padding:12px"><strong style="color:var(--text)">Proxy CORS intégré</strong><br><span style="color:var(--text-muted)">Cocher "Activer proxy CORS" dans les paramètres</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<div id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Confirmer</div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-danger" id="modal-confirm">Confirmer</button>
+    </div>
+  </div>
+</div>
+<div id="toasts"></div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────────────────────────
+const BASE_URL = 'https://imir.ecotrack.dz';
+const PROXY_URL = 'https://corsproxy.io/?' + BASE_URL;
+
+const state = {
+  token: localStorage.getItem('ect_token') || '',
+  base: localStorage.getItem('ect_base') || BASE_URL,
+  useProxy: localStorage.getItem('ect_proxy') === '1',
+  tarifs: null, communes: {}, products: [],
+  connected: false, currentPage: 'dashboard',
+  orders: [], filteredOrders: [], ordersPage: 1, ordersPerPage: 25,
+  currentTarifTab: 'livraison',
+};
+
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const WILAYAS = {1:'Adrar',2:'Chlef',3:'Laghouat',4:'Oum El Bouaghi',5:'Batna',6:'Béjaïa',7:'Biskra',8:'Béchar',9:'Blida',10:'Bouira',11:'Tamanrasset',12:'Tébessa',13:'Tlemcen',14:'Tiaret',15:'Tizi Ouzou',16:'Alger',17:'Djelfa',18:'Jijel',19:'Sétif',20:'Saïda',21:'Skikda',22:'Sidi Bel Abbès',23:'Annaba',24:'Guelma',25:'Constantine',26:'Médéa',27:'Mostaganem',28:"M'Sila",29:'Mascara',30:'Ouargla',31:'Oran',32:'El Bayadh',33:'Illizi',34:'Bordj Bou Arréridj',35:'Boumerdès',36:'El Tarf',37:'Tindouf',38:'Tissemsilt',39:'El Oued',40:'Khenchela',41:'Souk Ahras',42:'Tipaza',43:'Mila',44:'Aïn Defla',45:'Naâma',46:'Aïn Témouchent',47:'Ghardaïa',48:'Relizane',49:'Timimoun',50:'Bordj Badji Mokhtar',51:'Ouled Djellal',52:'Béni Abbès',53:'In Salah',54:'In Guezzam',55:'Touggourt',56:'Djanet',57:"El M'Ghair",58:'El Méniaa'};
+const STATUS_MAP = {
+  0:{label:'En attente',cls:'pill-gray'},1:{label:'Pris en charge',cls:'pill-blue'},
+  2:{label:'En transit',cls:'pill-gold'},3:{label:'Livré',cls:'pill-green'},
+  4:{label:'Retour',cls:'pill-red'},5:{label:'Retour validé',cls:'pill-gray'},
+  6:{label:'Hors zone',cls:'pill-red'},7:{label:'Tentative',cls:'pill-gold'},
+  8:{label:'Exception',cls:'pill-red'},
+};
+const ORDER_TYPES = {1:'Livraison',2:'Échange',3:'Pickup',4:'Recouvrement'};
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(path, opts={}) {
+  const base = state.useProxy ? PROXY_URL : state.base;
+  const sep = path.includes('?') ? '&' : '?';
+  const url = `${base}${path}${sep}api_token=${state.token}`;
+  const res = await fetch(url, {
+    mode: 'cors',
+    headers: {'Authorization':`Bearer ${state.token}`,'Accept':'application/json',...(opts.headers||{})},
+    ...opts
+  });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── SETUP ────────────────────────────────────────────────────────────────────
+function checkSetup() {
+  if(!state.token) {
+    document.getElementById('setup-overlay').classList.remove('hidden');
+  } else {
+    document.getElementById('setup-overlay').classList.add('hidden');
+    init();
+  }
+}
+
+async function setupConnect() {
+  const token = document.getElementById('setup-token').value.trim();
+  if(!token) { showSetupErr('Veuillez entrer votre clé API.'); return; }
+  const btn = document.getElementById('setup-btn');
+  const btnText = document.getElementById('setup-btn-text');
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;vertical-align:middle;margin-right:8px"></span>Connexion...';
+  document.getElementById('setup-err').style.display = 'none';
+  // Try direct first, then proxy
+  const attempts = [false, true];
+  for(const useProxy of attempts) {
+    try {
+      const base = useProxy ? PROXY_URL : BASE_URL;
+      const sep = '?';
+      const url = `${base}/api/v1/get/fees${sep}api_token=${token}`;
+      const res = await fetch(url, {mode:'cors', headers:{'Authorization':`Bearer ${token}`,'Accept':'application/json'}});
+      if(res.ok) {
+        state.token = token;
+        state.useProxy = useProxy;
+        localStorage.setItem('ect_token', token);
+        localStorage.setItem('ect_base', BASE_URL);
+        localStorage.setItem('ect_proxy', useProxy ? '1' : '0');
+        document.getElementById('setup-overlay').classList.add('hidden');
+        if(useProxy) toast('Proxy CORS activé automatiquement','info');
+        init();
+        btn.disabled = false;
+        btnText.textContent = 'Se connecter';
+        return;
+      }
+    } catch(e) { /* try next */ }
+  }
+  showSetupErr('Connexion impossible. Vérifiez votre clé API.');
+  btn.disabled = false;
+  btnText.textContent = 'Se connecter';
+}
+
+function showSetupErr(msg) {
+  const el = document.getElementById('setup-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+document.getElementById('setup-token').addEventListener('keydown', e => { if(e.key==='Enter') setupConnect(); });
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function navigateTo(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const el = document.getElementById(`page-${page}`); if(el) el.classList.add('active');
+  const nav = document.querySelector(`[data-page="${page}"]`); if(nav) nav.classList.add('active');
+  state.currentPage = page;
+  const titles = {dashboard:'Dashboard',commandes:'Commandes',nouvelle:'Nouvelle Commande',suivi:'Suivi Colis',tarifs:'Tarifs',analytiques:'Analytiques',parametres:'Paramètres'};
+  document.getElementById('pageTitle').textContent = titles[page]||page;
+  document.getElementById('breadcrumb').textContent = `IMIR Logistics / ${titles[page]||page}`;
+  onPageLoad(page);
+}
+document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>navigateTo(n.dataset.page)));
+
+let sidebarPinned = false;
+document.getElementById('sidebarToggle').addEventListener('click', ()=>{
+  sidebarPinned = !sidebarPinned;
+  document.getElementById('sidebar').classList.toggle('expanded', sidebarPinned);
+});
+
+async function onPageLoad(page) {
+  if(page==='commandes') loadOrders();
+  if(page==='tarifs') { loadTarifs(); populateCalcWilayas(); }
+  if(page==='analytiques') renderAnalytics();
+  if(page==='parametres') loadSettingsToInputs();
+  if(page==='nouvelle') { populateFormWilayas(); loadProducts(); }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  loadSettingsToInputs();
+  try {
+    await loadDashboard();
+  } catch(e) {
+    setConnected(false);
+    document.getElementById('tarif-bars').innerHTML = `<div class="empty-state"><p style="color:#E74C3C">${e.message}</p><button class="btn btn-secondary btn-sm mt-8" onclick="init()">Réessayer</button></div>`;
+  }
+}
+
+async function loadDashboard() {
+  const fees = await api('/api/v1/get/fees');
+  state.tarifs = fees;
+  const liv = fees.livraison||[];
+  document.getElementById('kv-wilayas').textContent = liv.length;
+  const avg = liv.length ? Math.round(liv.reduce((s,w)=>s+(+w.tarif),0)/liv.length) : 0;
+  document.getElementById('kv-avg').textContent = fmt(avg)+' DA';
+  renderTarifBars(liv);
+  setConnected(true);
+  renderRecentOrders([]);
+}
+
+function setConnected(ok) {
+  state.connected = ok;
+  document.getElementById('connDot').className = 'conn-dot '+(ok?'connected':'error');
+  const now = new Date().toLocaleTimeString('fr-FR');
+  document.getElementById('syncTime').textContent = now;
+  document.getElementById('dash-sync').textContent = now;
+  const s = document.getElementById('dash-status');
+  if(s){ s.className=`pill ${ok?'pill-green':'pill-red'}`; s.textContent=ok?'Connecté':'Erreur API'; }
+}
+
+function renderTarifBars(data) {
+  if(!data||!data.length){ document.getElementById('tarif-bars').innerHTML='<div class="empty-state"><p>Aucun tarif disponible</p></div>'; return; }
+  const top = [...data].sort((a,b)=>+b.tarif-+a.tarif).slice(0,20);
+  const max = Math.max(...top.map(w=>+w.tarif));
+  document.getElementById('tarif-bars').innerHTML = top.map(w=>`
+    <div class="bar-row">
+      <div class="bar-label">${WILAYAS[w.wilaya_id]||'W'+w.wilaya_id}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round((+w.tarif/max)*100)}%"></div></div>
+      <div class="bar-val">${fmt(+w.tarif)} DA</div>
+    </div>`).join('');
+}
+
+function renderRecentOrders(orders) {
+  const wrap = document.getElementById('recent-orders-wrap');
+  if(!orders||!orders.length){
+    wrap.innerHTML=`<div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:0.3"><path d="M9 17H7A5 5 0 017 7h10a5 5 0 010 10h-1"/><circle cx="12" cy="17" r="3"/></svg>
+      <p>Aucune commande récente</p>
+    </div>`;return;
+  }
+  wrap.innerHTML = renderOrdersTable(orders.slice(0,8), true);
+}
+
+// ── COMMANDES ──────────────────────────────────────────────────────────────
+async function loadOrders() {
+  document.getElementById('orders-table-wrap').innerHTML = '<div class="loading-overlay"><div class="spinner"></div>Chargement...</div>';
+  try {
+    const data = await api('/api/v1/get/orders');
+    state.orders = Array.isArray(data)?data:(data.orders||data.data||[]);
+    state.filteredOrders = [...state.orders];
+    state.ordersPage = 1;
+    renderOrdersPage();
+  } catch(e) {
+    document.getElementById('orders-table-wrap').innerHTML = `<div class="empty-state" style="padding:48px">
+      <h3>Erreur de chargement</h3><p style="color:#E74C3C">${e.message}</p>
+      <button class="btn btn-secondary btn-sm mt-8" onclick="loadOrders()">Réessayer</button>
+    </div>`;
+  }
+}
+
+function filterOrders() {
+  const q = document.getElementById('cmd-search').value.toLowerCase();
+  const st = document.getElementById('cmd-status-filter').value;
+  const tp = document.getElementById('cmd-type-filter').value;
+  state.filteredOrders = state.orders.filter(o=>{
+    const mQ = !q||(o.tracking||'').toLowerCase().includes(q)||(o.nom_client||'').toLowerCase().includes(q)||(o.telephone||'').includes(q);
+    const mS = st===''||String(o.status||o.etat||0)===st;
+    const mT = tp===''||String(o.type)===tp;
+    return mQ&&mS&&mT;
+  });
+  state.ordersPage = 1;
+  renderOrdersPage();
+}
+
+function renderOrdersPage() {
+  const {filteredOrders:fo, ordersPage:pg, ordersPerPage:pp} = state;
+  const slice = fo.slice((pg-1)*pp, pg*pp);
+  document.getElementById('orders-count').textContent = `${fo.length} commande${fo.length!==1?'s':''}`;
+  if(!fo.length){
+    document.getElementById('orders-table-wrap').innerHTML='<div class="empty-state" style="padding:60px"><h3>Aucune commande</h3><p>Modifiez les filtres ou créez une nouvelle commande</p></div>';
+    document.getElementById('orders-pagination').innerHTML=''; return;
+  }
+  document.getElementById('orders-table-wrap').innerHTML = renderOrdersTable(slice);
+  renderPagination();
+}
+
+function renderOrdersTable(orders, mini=false) {
+  if(!orders.length) return '<div class="empty-state" style="padding:40px"><p>Aucune commande</p></div>';
+  return `<table><thead><tr>
+    <th>Tracking</th><th>Client</th><th>Wilaya</th><th>COD</th><th>Type</th><th>Statut</th><th>Date</th>
+    ${mini?'':'<th>Actions</th>'}
+  </tr></thead><tbody>
+  ${orders.map(o=>{
+    const st = STATUS_MAP[o.status||o.etat||0]||{label:'Inconnu',cls:'pill-gray'};
+    const wName = WILAYAS[o.wilaya]||o.wilaya||'—';
+    const date = o.created_at ? new Date(o.created_at).toLocaleDateString('fr-FR') : '—';
+    const tid = o.tracking||'';
+    return `<tr onclick="expandOrderRow(this,'${tid}')" style="cursor:pointer">
+      <td><span class="mono gold">${tid||'—'}</span></td>
+      <td>${o.nom_client||'—'}</td>
+      <td>${wName}</td>
+      <td><span class="mono gold">${fmt(+(o.montant||0))} DA</span></td>
+      <td><span class="pill pill-gray">${ORDER_TYPES[o.type]||'—'}</span></td>
+      <td><span class="pill ${st.cls}">${st.label}</span></td>
+      <td class="muted">${date}</td>
+      ${mini?'':
+      `<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">
+        <button class="btn btn-icon btn-danger btn-sm" title="Supprimer" onclick="confirmDelete('${tid}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div></td>`}
+    </tr>
+    <tr id="expand-${tid}" style="display:none"><td colspan="${mini?7:8}" style="padding:0"><div class="expand-content" id="expand-content-${tid}"></div></td></tr>`;
+  }).join('')}
+  </tbody></table>`;
+}
+
+async function expandOrderRow(tr, tracking) {
+  if(!tracking) return;
+  const expTr = document.getElementById(`expand-${tracking}`);
+  if(!expTr) return;
+  if(expTr.style.display==='table-row'){ expTr.style.display='none'; return; }
+  expTr.style.display = 'table-row';
+  const cont = document.getElementById(`expand-content-${tracking}`);
+  cont.innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await api(`/api/v1/get/order/maj?tracking=${tracking}`);
+    const o = data.order||data||{};
+    cont.innerHTML = `
+      <div class="expand-field"><div class="expand-label">Adresse</div><div class="expand-value">${o.adresse||'—'}</div></div>
+      <div class="expand-field"><div class="expand-label">Téléphone</div><div class="expand-value mono">${o.telephone||'—'}</div></div>
+      <div class="expand-field"><div class="expand-label">Commune</div><div class="expand-value">${o.commune||'—'}</div></div>
+      <div class="expand-field"><div class="expand-label">Poids</div><div class="expand-value mono">${o.poids||'—'} kg</div></div>
+      <div class="expand-field"><div class="expand-label">Référence</div><div class="expand-value mono">${o.reference||'—'}</div></div>
+      <div class="expand-field"><div class="expand-label">Remarque</div><div class="expand-value">${o.remarque||'—'}</div></div>
+    `;
+  } catch(e) {
+    cont.innerHTML = `<span style="color:#E74C3C;font-size:12px">Erreur: ${e.message}</span>`;
+  }
+}
+
+function renderPagination() {
+  const {filteredOrders:fo, ordersPage:pg, ordersPerPage:pp} = state;
+  const total = Math.ceil(fo.length/pp);
+  if(total<=1){ document.getElementById('orders-pagination').innerHTML=''; return; }
+  const pages = [];
+  for(let i=Math.max(1,pg-2); i<=Math.min(total,pg+2); i++) pages.push(i);
+  document.getElementById('orders-pagination').innerHTML = `
+    <span class="muted">Page ${pg} / ${total}</span>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-sm" onclick="changePage(1)" ${pg===1?'disabled':''}>«</button>
+      <button class="btn btn-ghost btn-sm" onclick="changePage(${pg-1})" ${pg===1?'disabled':''}>‹</button>
+      ${pages.map(p=>`<button class="btn btn-sm ${p===pg?'btn-primary':'btn-ghost'}" onclick="changePage(${p})">${p}</button>`).join('')}
+      <button class="btn btn-ghost btn-sm" onclick="changePage(${pg+1})" ${pg===total?'disabled':''}>›</button>
+      <button class="btn btn-ghost btn-sm" onclick="changePage(${total})" ${pg===total?'disabled':''}>»</button>
+    </div>`;
+}
+
+function changePage(p) { state.ordersPage = p; renderOrdersPage(); }
+
+function exportCSV() {
+  if(!state.filteredOrders.length){ toast('Aucune donnée à exporter','error'); return; }
+  const headers = ['Tracking','Client','Téléphone','Wilaya','Montant COD','Type','Statut','Date'];
+  const rows = state.filteredOrders.map(o=>[
+    o.tracking||'', o.nom_client||'', o.telephone||'',
+    WILAYAS[o.wilaya]||o.wilaya||'', o.montant||0,
+    ORDER_TYPES[o.type]||'', STATUS_MAP[o.status||o.etat||0]?.label||'',
+    o.created_at ? new Date(o.created_at).toLocaleDateString('fr-FR') : ''
+  ]);
+  const csv = [headers,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+  a.download = `ecotrack-commandes-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('Export CSV téléchargé','success');
+}
+
+function confirmDelete(tracking) {
+  showModal('Supprimer la commande', `Confirmer la suppression de <strong class="mono gold">${tracking}</strong> ?<br><small>Cette action est irréversible.</small>`, async()=>{
+    try {
+      await api(`/api/v1/delete/order?tracking=${tracking}`, {method:'DELETE'});
+      state.orders = state.orders.filter(o=>o.tracking!==tracking);
+      state.filteredOrders = state.filteredOrders.filter(o=>o.tracking!==tracking);
+      renderOrdersPage();
+      toast('Commande supprimée','success');
+    } catch(e) { toast('Erreur: '+e.message,'error'); }
+  });
+}
+
+// ── NOUVELLE COMMANDE ────────────────────────────────────────────────────────
+async function populateFormWilayas() {
+  const sel = document.getElementById('f-wilaya');
+  Object.entries(WILAYAS).forEach(([id,name])=>{
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = `${id} - ${name}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function onWilayaChange() {
+  const wid = document.getElementById('f-wilaya').value;
+  const sel = document.getElementById('f-commune');
+  sel.innerHTML = '<option value="">Chargement...</option>';
+  updateTarifPreview();
+  if(!wid) { sel.innerHTML = '<option value="">D\'abord choisir wilaya</option>'; return; }
+  try {
+    if(!state.communes[wid]) {
+      const data = await api(`/api/v1/get/communes?wilaya_id=${wid}`);
+      state.communes[wid] = Array.isArray(data) ? data : (data.communes||[]);
+    }
+    sel.innerHTML = '<option value="">Choisir commune</option>';
+    state.communes[wid].forEach(c=>{
+      const opt = document.createElement('option');
+      opt.value = c.id||c.nom; opt.textContent = c.nom||c;
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    sel.innerHTML = '<option value="">Erreur chargement</option>';
+  }
+}
+
+async function loadProducts() {
+  if(state.products.length) { populateProductSelect(); return; }
+  try {
+    const data = await api('/api/v1/get/products');
+    state.products = Array.isArray(data)?data:(data.products||[]);
+    populateProductSelect();
+  } catch(e) {}
+}
+
+function populateProductSelect() {
+  const sel = document.getElementById('f-product');
+  sel.innerHTML = '<option value="">Choisir désignation</option>';
+  state.products.forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p.id||p.nom; opt.textContent = p.nom||p;
+    sel.appendChild(opt);
+  });
+}
+
+function updateTarifPreview() {
+  const wid = document.getElementById('f-wilaya').value;
+  const montant = +(document.getElementById('f-montant').value)||0;
+  if(!wid||!state.tarifs){ document.getElementById('tarif-preview').style.display='none'; return; }
+  const liv = state.tarifs.livraison||[];
+  const t = liv.find(w=>+w.wilaya_id===+wid);
+  if(!t){ document.getElementById('tarif-preview').style.display='none'; return; }
+  const tarif = +t.tarif;
+  const total = tarif + montant;
+  document.getElementById('tarif-preview').style.display = 'block';
+  document.getElementById('tarif-preview-content').innerHTML = `
+    <div class="setting-row"><span>Frais de livraison</span><span class="mono gold">${fmt(tarif)} DA</span></div>
+    <div class="setting-row"><span>Montant COD</span><span class="mono">${fmt(montant)} DA</span></div>
+    <div class="setting-row" style="border:none"><span style="font-weight:600">Total à collecter</span><span class="mono gold" style="font-size:16px;font-weight:600">${fmt(total)} DA</span></div>`;
+}
+
+async function submitOrder() {
+  const nom = document.getElementById('f-nom').value.trim();
+  const tel = document.getElementById('f-tel').value.trim();
+  const adresse = document.getElementById('f-adresse').value.trim();
+  const wid = document.getElementById('f-wilaya').value;
+  const commune = document.getElementById('f-commune').value;
+  const montant = document.getElementById('f-montant').value;
+  const type = document.getElementById('f-type').value;
+  if(!nom||!tel||!adresse||!wid||!commune||!montant){ toast('Remplissez tous les champs obligatoires (*)','error'); return; }
+  const btn = document.getElementById('submit-order-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px"></span> Envoi...';
+  try {
+    const payload = {
+      nom_client:nom, telephone:tel, telephone2:document.getElementById('f-tel2').value,
+      adresse, wilaya_id:wid, commune_id:commune,
+      montant, type, designation:document.getElementById('f-product').value,
+      poids:document.getElementById('f-poids').value||1,
+      reference:document.getElementById('f-ref').value,
+      remarque:document.getElementById('f-remarque').value,
+      fragile:document.getElementById('f-fragile').checked?1:0,
+      ouvrable:document.getElementById('f-ouvrable').checked?1:0,
+    };
+    const res = await api('/api/v1/create/order', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    toast('Commande créée avec succès !','success');
+    ['f-nom','f-tel','f-tel2','f-adresse','f-montant','f-ref','f-remarque'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('f-wilaya').value='';
+    document.getElementById('f-commune').innerHTML='<option value="">D\'abord choisir wilaya</option>';
+    document.getElementById('tarif-preview').style.display='none';
+    if(res.tracking) toast(`Tracking: ${res.tracking}`,'info');
+  } catch(e) { toast('Erreur: '+e.message,'error'); }
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Créer la commande';
+}
+
+// ── SUIVI ─────────────────────────────────────────────────────────────────────
+async function trackOrder(tracking) {
+  const tid = tracking || document.getElementById('track-input').value.trim();
+  if(!tid){ toast('Entrez un numéro de tracking','error'); return; }
+  const wrap = document.getElementById('track-result');
+  wrap.innerHTML = '<div class="loading-overlay"><div class="spinner"></div>Recherche...</div>';
+  try {
+    const data = await api(`/api/v1/get/order/maj?tracking=${tid}`);
+    const o = data.order||data||{};
+    const maj = data.maj||data.historique||[];
+    const st = STATUS_MAP[o.status||o.etat||0]||{label:'Inconnu',cls:'pill-gray'};
+    wrap.innerHTML = `
+      <div class="card" style="margin-top:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Numéro de tracking</div>
+            <div class="mono gold" style="font-size:20px;font-weight:600">${tid}</div>
+          </div>
+          <span class="pill ${st.cls}" style="font-size:13px">${st.label}</span>
+        </div>
+        <div class="grid-3" style="margin-bottom:20px;gap:12px">
+          <div><div class="expand-label">Client</div><div class="expand-value">${o.nom_client||'—'}</div></div>
+          <div><div class="expand-label">Téléphone</div><div class="expand-value mono">${o.telephone||'—'}</div></div>
+          <div><div class="expand-label">Wilaya</div><div class="expand-value">${WILAYAS[o.wilaya]||o.wilaya||'—'}</div></div>
+          <div><div class="expand-label">Adresse</div><div class="expand-value">${o.adresse||'—'}</div></div>
+          <div><div class="expand-label">Montant COD</div><div class="expand-value mono gold">${fmt(+(o.montant||0))} DA</div></div>
+          <div><div class="expand-label">Date création</div><div class="expand-value">${o.created_at?new Date(o.created_at).toLocaleDateString('fr-FR'):'—'}</div></div>
+        </div>
+        ${maj.length?`<div style="font-weight:600;margin-bottom:12px">Historique (${maj.length} événements)</div><div class="timeline">${maj.map(m=>`
+          <div class="timeline-item">
+            <div class="timeline-date">${m.date||m.created_at||'—'}</div>
+            <div class="timeline-content">${m.statut||m.status||m.label||'Mise à jour'}<div class="timeline-station">${m.station||m.agence||''}</div></div>
+          </div>`).join('')}</div>`:
+          '<p class="muted" style="font-size:12px">Aucun historique disponible</p>'}
+      </div>`;
+  } catch(e) {
+    wrap.innerHTML = `<div class="empty-state" style="margin-top:16px"><h3>Tracking introuvable</h3><p style="color:#E74C3C">${e.message}</p></div>`;
+  }
+}
+
+async function trackBatch() {
+  const lines = document.getElementById('batch-input').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length){ toast('Entrez au moins un tracking','error'); return; }
+  const res = document.getElementById('batch-result');
+  res.innerHTML = '<div class="loading-overlay"><div class="spinner"></div>Traitement...</div>';
+  const results = [];
+  for(const tid of lines.slice(0,20)) {
+    try {
+      const data = await api(`/api/v1/get/order/maj?tracking=${tid}`);
+      const o = data.order||data||{};
+      const st = STATUS_MAP[o.status||o.etat||0]||{label:'—',cls:'pill-gray'};
+      results.push({tid, ok:true, label:st.label, cls:st.cls, client:o.nom_client||'—'});
+    } catch(e) { results.push({tid, ok:false, label:'Introuvable', cls:'pill-red'}); }
+  }
+  res.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tracking</th><th>Client</th><th>Statut</th></tr></thead><tbody>
+    ${results.map(r=>`<tr><td class="mono gold">${r.tid}</td><td>${r.client||'—'}</td><td><span class="pill ${r.cls}">${r.label}</span></td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+// ── TARIFS ────────────────────────────────────────────────────────────────────
+async function loadTarifs() {
+  if(state.tarifs){ renderTarifTable(state.currentTarifTab); return; }
+  document.getElementById('tarif-table-wrap').innerHTML = '<div class="loading-overlay"><div class="spinner"></div>Chargement...</div>';
+  try {
+    const data = await api('/api/v1/get/fees');
+    state.tarifs = data;
+    renderTarifTable(state.currentTarifTab);
+  } catch(e) {
+    document.getElementById('tarif-table-wrap').innerHTML = `<div class="empty-state" style="padding:48px"><p style="color:#E74C3C">${e.message}</p></div>`;
+  }
+}
+
+function renderTarifTable(tab) {
+  const data = (state.tarifs||{})[tab]||[];
+  if(!data.length){ document.getElementById('tarif-table-wrap').innerHTML='<div class="empty-state" style="padding:48px"><p>Aucune donnée disponible</p></div>'; return; }
+  document.getElementById('tarif-table-wrap').innerHTML = `<table>
+    <thead><tr><th>#</th><th>Wilaya</th><th>Tarif (DA)</th></tr></thead>
+    <tbody>${data.map(w=>`<tr>
+      <td class="muted">${w.wilaya_id}</td>
+      <td>${WILAYAS[w.wilaya_id]||'W'+w.wilaya_id}</td>
+      <td><span class="mono gold">${fmt(+w.tarif)} DA</span></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function switchTarifTab(tab, el) {
+  state.currentTarifTab = tab;
+  document.querySelectorAll('#page-tarifs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if(state.tarifs) renderTarifTable(tab);
+}
+
+function populateCalcWilayas() {
+  const sel = document.getElementById('calc-wilaya');
+  sel.innerHTML = '<option value="">Choisir wilaya</option>';
+  Object.entries(WILAYAS).forEach(([id,name])=>{
+    const opt = document.createElement('option'); opt.value=id; opt.textContent=`${id} - ${name}`; sel.appendChild(opt);
+  });
+}
+
+function calcTarif() {
+  const wid = document.getElementById('calc-wilaya').value;
+  const montant = +(document.getElementById('calc-montant').value)||0;
+  const res = document.getElementById('calc-result');
+  if(!wid||!state.tarifs){ res.innerHTML=''; return; }
+  const liv = state.tarifs.livraison||[];
+  const t = liv.find(w=>+w.wilaya_id===+wid);
+  if(!t){ res.innerHTML=`<div class="calc-result"><p class="muted">Tarif non disponible pour cette wilaya</p></div>`; return; }
+  const tarif = +t.tarif;
+  const ret = +((state.tarifs.retour||[]).find(w=>+w.wilaya_id===+wid)||{tarif:0}).tarif;
+  res.innerHTML = `<div class="calc-result">
+    <div class="setting-row"><span>Livraison domicile</span><span class="mono gold">${fmt(tarif)} DA</span></div>
+    ${ret?`<div class="setting-row"><span>Retour</span><span class="mono">${fmt(ret)} DA</span></div>`:''}
+    <div class="setting-row"><span>Montant COD</span><span class="mono">${fmt(montant)} DA</span></div>
+    <div class="setting-row" style="border:none"><span style="font-weight:700">Total à collecter</span><span class="mono gold" style="font-size:18px;font-weight:700">${fmt(tarif+montant)} DA</span></div>
+  </div>`;
+}
+
+// ── ANALYTIQUES ───────────────────────────────────────────────────────────────
+function renderAnalytics() {
+  if(!state.tarifs){ document.getElementById('chart-distribution').innerHTML='<div class="empty-state"><p>Chargez les tarifs d\'abord</p></div>'; return; }
+  const liv = state.tarifs.livraison||[];
+  // Distribution chart
+  const buckets = {'<400':0,'400-500':0,'500-600':0,'600-700':0,'>700':0};
+  liv.forEach(w=>{
+    const t=+w.tarif;
+    if(t<400)buckets['<400']++;
+    else if(t<500)buckets['400-500']++;
+    else if(t<600)buckets['500-600']++;
+    else if(t<700)buckets['600-700']++;
+    else buckets['>700']++;
+  });
+  const maxB = Math.max(...Object.values(buckets));
+  document.getElementById('chart-distribution').innerHTML = Object.entries(buckets).map(([k,v])=>`
+    <div class="bar-row">
+      <div class="bar-label">${k} DA</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${maxB?Math.round(v/maxB*100):0}%"></div></div>
+      <div class="bar-val">${v} w.</div>
+    </div>`).join('');
+
+  // Geo stats
+  const min = Math.min(...liv.map(w=>+w.tarif));
+  const max = Math.max(...liv.map(w=>+w.tarif));
+  const avg = Math.round(liv.reduce((s,w)=>s+(+w.tarif),0)/liv.length);
+  const cheapest = liv.reduce((a,b)=>+a.tarif<+b.tarif?a:b);
+  const priciest = liv.reduce((a,b)=>+a.tarif>+b.tarif?a:b);
+  document.getElementById('chart-geo').innerHTML = `
+    <div class="setting-row"><span>Couverture</span><span class="mono gold">${liv.length} wilayas</span></div>
+    <div class="setting-row"><span>Tarif min</span><span class="mono green">${fmt(min)} DA</span></div>
+    <div class="setting-row"><span>Tarif max</span><span class="mono red">${fmt(max)} DA</span></div>
+    <div class="setting-row"><span>Moyenne</span><span class="mono">${fmt(avg)} DA</span></div>
+    <div class="setting-row"><span>Moins cher</span><span>${WILAYAS[cheapest.wilaya_id]||'—'}</span></div>
+    <div class="setting-row" style="border:none"><span>Plus cher</span><span>${WILAYAS[priciest.wilaya_id]||'—'}</span></div>`;
+
+  // Network stats
+  const types = Object.keys(state.tarifs).filter(k=>Array.isArray(state.tarifs[k]));
+  document.getElementById('chart-stats').innerHTML = `
+    <div class="setting-row"><span>Stations réseau</span><span class="mono gold">76</span></div>
+    <div class="setting-row"><span>Wilayas actives</span><span class="mono green">${liv.length}</span></div>
+    <div class="setting-row"><span>Types de service</span><span class="mono">${types.length}</span></div>
+    <div class="setting-row"><span>Réseau</span><span>National</span></div>
+    <div class="setting-row" style="border:none"><span>API Status</span><span class="pill pill-green" style="font-size:11px">Opérationnel</span></div>`;
+
+  // Wilaya map
+  const tarifMap = {};
+  liv.forEach(w=>{ tarifMap[+w.wilaya_id]=+w.tarif; });
+  const allTarifs = Object.values(tarifMap);
+  const mapMin = Math.min(...allTarifs), mapMax = Math.max(...allTarifs);
+  const cells = Array.from({length:58},(_,i)=>{
+    const id=i+1, t=tarifMap[id];
+    if(!t) return `<div class="wilaya-cell tier-0" title="${WILAYAS[id]||'W'+id}">${id}</div>`;
+    const pct=(t-mapMin)/(mapMax-mapMin);
+    const tier=pct<0.25?'tier-1':pct<0.5?'tier-2':'tier-3';
+    return `<div class="wilaya-cell ${tier}" title="${WILAYAS[id]||'W'+id} — ${fmt(t)} DA">${id}</div>`;
+  });
+  document.getElementById('wilaya-map').innerHTML = `
+    <div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px">
+      <span><span class="wilaya-cell tier-1" style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle"></span> Bas</span>
+      <span><span class="wilaya-cell tier-2" style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle"></span> Moyen</span>
+      <span><span class="wilaya-cell tier-3" style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle"></span> Élevé</span>
+      <span><span class="wilaya-cell tier-0" style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle"></span> Non couvert</span>
+    </div>
+    <div class="wilaya-grid">${cells.join('')}</div>`;
+}
+
+// ── PARAMÈTRES ────────────────────────────────────────────────────────────────
+function loadSettingsToInputs() {
+  const b = document.getElementById('s-base'); if(b) b.value=state.base;
+  const t = document.getElementById('s-token'); if(t) t.value=state.token;
+  const p = document.getElementById('s-proxy'); if(p) p.checked=state.useProxy;
+}
+
+function saveSettings() {
+  const base = (document.getElementById('s-base')||{}).value||BASE_URL;
+  const token = (document.getElementById('s-token')||{}).value||'';
+  const useProxy = ((document.getElementById('s-proxy')||{}).checked)||false;
+  state.base = base; state.token = token; state.useProxy = useProxy;
+  localStorage.setItem('ect_base', base);
+  localStorage.setItem('ect_token', token);
+  localStorage.setItem('ect_proxy', useProxy?'1':'0');
+}
+
+function toggleTokenVisibility() {
+  const inp = document.getElementById('s-token');
+  inp.type = inp.type==='password' ? 'text' : 'password';
+}
+
+async function validateToken() {
+  saveSettings();
+  const pill = document.getElementById('conn-status-pill');
+  pill.className='pill pill-gold'; pill.textContent='Test en cours...';
+  try {
+    const res = await api('/api/v1/get/fees');
+    pill.className='pill pill-green'; pill.textContent='Connecté';
+    document.getElementById('conn-last-check').textContent=new Date().toLocaleString('fr-FR');
+    setConnected(true);
+    toast('Connexion API réussie !','success');
+  } catch(e) {
+    pill.className='pill pill-red'; pill.textContent='Erreur connexion';
+    toast('Erreur: '+e.message,'error'); setConnected(false);
+  }
+}
+
+function logout() {
+  showModal('Se déconnecter', 'Effacer toutes les données locales et revenir à l\'écran de connexion ?', ()=>{
+    localStorage.clear();
+    location.reload();
+  });
+}
+
+function clearCache() { state.tarifs=null; state.communes={}; state.orders=[]; toast('Cache vidé','info'); }
+
+async function refreshAll() {
+  state.tarifs = null; state.orders = [];
+  await init();
+  if(state.currentPage!=='dashboard') onPageLoad(state.currentPage);
+  toast('Données actualisées','success');
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function showModal(title,body,onConfirm) {
+  document.getElementById('modal-title').innerHTML=title;
+  document.getElementById('modal-body').innerHTML=body;
+  document.getElementById('modal-confirm').onclick=()=>{closeModal();onConfirm();};
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
+document.getElementById('modal-overlay').addEventListener('click',e=>{ if(e.target===e.currentTarget)closeModal(); });
+
+// ── TOASTS ────────────────────────────────────────────────────────────────────
+function toast(msg,type='info') {
+  const icons={success:'✓',error:'✕',info:'ℹ'};
+  const el=document.createElement('div');
+  el.className=`toast toast-${type}`;
+  el.innerHTML=`<span>${icons[type]||'•'}</span><span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>{ el.style.animation='fadeOut 0.3s ease forwards'; setTimeout(()=>el.remove(),300); },4000);
+}
+
+function fmt(n){ return Number(n||0).toLocaleString('fr-DZ'); }
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+checkSetup();
+</script>
+</body>
+</html>
